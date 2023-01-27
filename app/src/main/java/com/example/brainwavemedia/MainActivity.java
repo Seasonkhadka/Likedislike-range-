@@ -41,27 +41,24 @@ public class MainActivity extends AppCompatActivity {
     private NskAlgoSdk nskAlgoSdk;
     private BluetoothAdapter bluetoothAdapter;
     private TgStreamReader tgStreamReader;
-    InputStream badavg,goodavg;
-
+    InputStream badavg, goodavg;
     private short raw_data[] = {0};
     private int raw_data_index = 0;
-    List goodrange = new ArrayList();
-    List badrange = new ArrayList();
-    private Button hatebtn,lovebtn;
+    List<Double> goodrange = new ArrayList<>();
+    List<Double> badrange = new ArrayList<>();
+    private Button hatebtn, lovebtn;
     private VideoView videoView;
     private TextView connectionStatus;
-
-    private int attention = 0;
-    float RawData;
-    double realtimerange,goodmin,goodmax,badmin,badmax;
+    double realtimerange, goodmin, goodmax, badmin, badmax;
     String[] goodrage;
     String[] badrage;
-    double sum = 0D;
     XYPlot plot;
     double rawdata1 = 0;
-    double rawCount = 0;
-    ImageView image =findViewById(R.id.image);
-    List<Double> realtimedata = new ArrayList<>();
+    private int value = 0;
+    ImageView image;
+    List<Short> realtimedata = new ArrayList<>();
+    private boolean buttonClicked = false;
+    private boolean startAction = false;
 
     private boolean record = true;
 
@@ -71,55 +68,65 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        goodavg=getResources().openRawResource(R.raw.good);
+        image = findViewById(R.id.image);
+        connectionStatus = findViewById(R.id.connectionStatus);
+        hatebtn = findViewById(R.id.hatebtn);
+        lovebtn = findViewById(R.id.lovebtn);
+        goodavg = getResources().openRawResource(R.raw.good);
         BufferedReader reader = new BufferedReader(new InputStreamReader(goodavg));
+
         try {
             String csvline;
-            while ((csvline=reader.readLine())!=null){
-                goodrage=csvline.split(",");
+            while ((csvline = reader.readLine()) != null) {
+                goodrage = csvline.split(",");
                 try {
                     //double[] doubleArray = Arrays.stream(goodrage).mapToDouble(Double::parseDouble).toArray();
-                    goodrange.add(goodrage);
-                    Collections.sort(goodrange);
-                    goodmin= (double) goodrange.get(0);
-                    goodmax=(double) (goodrange.size()-1);
-
-
+                    goodrange.add(Double.valueOf(goodrage[0] + ""));
 
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
+            if (goodrange.size() > 0) {
+                Collections.sort(goodrange);
+                goodmin = goodrange.get(0);
+                goodmax = goodrange.get(goodrange.size() - 1);
+                Log.e("TAG2", "good min : " + goodmin);
+                Log.e("TAG2", "good max : " + goodmax);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         badavg = getResources().openRawResource(R.raw.bad);
         BufferedReader reader1 = new BufferedReader(new InputStreamReader(badavg));
+        Log.e("TAG2", "start");
         try {
             String csvline1;
-            while ((csvline1=reader.readLine())!=null){
-                badrage=csvline1.split(",");
+            while ((csvline1 = reader1.readLine()) != null) {
+                badrage = csvline1.split(",");
                 try {
                     //double[] doubleArray = Arrays.stream(goodrage).mapToDouble(Double::parseDouble).toArray();
-                    badrange.add(badrage);
-                    Collections.sort(badrange);
-                    badmin= (double) badrange.get(0);
-                    badmax=(double) (badrange.size()-1);
-
-
-
+                    badrange.add(Double.valueOf(badrage[0] + ""));
                 } catch (Exception e) {
+                    Log.e("TAG2", "error : " + e);
                     e.printStackTrace();
                 }
             }
-        } catch (IOException e) {
+
+            if (badrange.size() > 0) {
+                Collections.sort(badrange);
+                badmin = badrange.get(0);
+                badmax = badrange.get(badrange.size() - 1);
+                Log.e("TAG2", "bad min : " + badmin);
+                Log.e("TAG2", "bad max : " + badmax);
+            }
+
+
+        } catch (Exception e) {
+            Log.e("TAG2", "error 2 : " + e);
             e.printStackTrace();
         }
-
-        hatebtn=findViewById(R.id.hatebtn);
-        lovebtn=findViewById(R.id.lovebtn);
-
 
 
         try {
@@ -149,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         nskAlgoSdk = new NskAlgoSdk();
-        plot =findViewById(R.id.graph);
+
 
         nskAlgoSdk.setOnStateChangeListener((state, reason) -> {
             String stateStr = "";
@@ -193,17 +200,17 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         });
+
+
         hatebtn.setOnClickListener(view -> {
-            receivedata(1);
-            image.setImageResource(R.drawable.cat);
-
-
-
-        });
-        lovebtn.setOnClickListener(view ->{
             image.setImageResource(R.drawable.cockroge);
-            receivedata(2);
-
+            buttonClicked = true;
+            raw_data_index = 0;
+        });
+        lovebtn.setOnClickListener(view -> {
+                    image.setImageResource(R.drawable.cat);
+                    buttonClicked = true;
+                    raw_data_index = 0;
                 }
         );
 
@@ -211,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connect() {
-        raw_data = new short[512];
+        raw_data = new short[2560];
         raw_data_index = 0;
 
         tgStreamReader = new TgStreamReader(bluetoothAdapter, callback);
@@ -228,42 +235,6 @@ public class MainActivity extends AppCompatActivity {
         tgStreamReader.connect();
     }
 
-    private void receivedata(int index) {
-        raw_data_index = 0;
-        rawdata1=0;
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                runOnUiThread(() -> {
-                    realtimedata.add(rawdata1);
-                    Collections.sort(realtimedata);
-                    realtimerange=realtimedata.get(0)-realtimedata.get(realtimedata.size()-1);
-                    showToast("Avg:" + realtimerange, Toast.LENGTH_LONG);
-
-                    switch (index) {
-                        case 1:
-                            if((realtimerange<=goodmax)&&((goodmin)<realtimerange ) ){
-                                showToast("you like the picture",Toast.LENGTH_LONG);
-                            }
-
-
-                            break;
-                        case 2:
-                            if((realtimerange<=badmax)&&((badmin)<realtimerange ) ){
-                                showToast("you dontlikethe picture",Toast.LENGTH_LONG);
-                            }
-
-                            break;
-
-                    }
-
-                });
-            }
-        }, 1000 * 5);
-
-
-    }
 
    /* private void DirectionData() {
         showToast("Recognizing data", Toast.LENGTH_LONG);
@@ -296,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 */
-
 
 
     private TgStreamHandler callback = new TgStreamHandler() {
@@ -332,8 +302,7 @@ public class MainActivity extends AppCompatActivity {
 
                     MainActivity.this.runOnUiThread(new Runnable() {
                         public void run() {
-                            showToast("click to record EastData", Toast.LENGTH_LONG);
-
+                            showToast("click to compare the data", Toast.LENGTH_LONG);
 
                             //receivedata();
 
@@ -417,11 +386,33 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case MindDataType.CODE_RAW:
                     raw_data[raw_data_index++] = (short) data;
-                    if (raw_data_index == 100) {
+                    // Log.e("TAG1", "rawdata :" +(short) data);
+                    if (buttonClicked && !startAction) {
+                        startAction = true;
+                        raw_data_index = 0;
+                        return;
+                    }
+                    if (raw_data_index == 2560) {
                         nskAlgoSdk.NskAlgoDataStream(NskAlgoDataType.NSK_ALGO_DATA_TYPE_EEG.value, raw_data, raw_data_index);
                         raw_data_index = 0;
-                        Log.e("TAG","RawData : "+raw_data[raw_data_index]);
-                        rawdata1 = raw_data[raw_data_index];
+
+                        if(startAction){
+                            Arrays.sort(raw_data);
+                            realtimerange = raw_data[raw_data.length - 1] - raw_data[0];
+
+                            if ((realtimerange <= goodmax) && ((goodmin) < realtimerange)) {
+                                Log.e("TAG1", "realtimerange" + realtimerange);
+                                showToast("you like the picture", Toast.LENGTH_LONG);
+                            } else if ((realtimerange <= badmax) && ((badmin) < realtimerange)) {
+                                Log.e("TAG1", "realtimerange2" + realtimerange);
+                                showToast("you dont like the picture", Toast.LENGTH_LONG);
+                            } else {
+                                Log.e("TAG1", "realtimerange3" + realtimerange);
+                                showToast("none of them", Toast.LENGTH_LONG);
+                            }
+                        }
+
+
                     }
                     break;
                 default:

@@ -49,4 +49,19 @@
       app:layout_constraintTop_toTopOf="parent"
       app:layout_constraintVertical_bias="0.839" />
 
+  <TextView
+      android:id="@+id/connectionStatus"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_alignParentRight="true"
+      android:text="welcome"
+      android:textColor="#fff"
+      android:textSize="20sp"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.563"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.933" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
